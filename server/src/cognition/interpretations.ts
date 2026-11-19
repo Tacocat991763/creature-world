@@ -26,7 +26,6 @@ export interface NarrativeOutput {
   creation_request: CreationRequest | null
   desires: DesirePacket[]
   new_goal: string | null
-  economy_earn: number
 }
 
 export const FALLBACK_OUTPUT: NarrativeOutput = {
@@ -38,7 +37,6 @@ export const FALLBACK_OUTPUT: NarrativeOutput = {
   creation_request: null,
   desires: [],
   new_goal: null,
-  economy_earn: 0,
 }
 
 export function parseNarrativeOutput(raw: string): NarrativeOutput {
@@ -56,14 +54,13 @@ export function parseNarrativeOutput(raw: string): NarrativeOutput {
         ? { intent: String(obj.creation_request.intent ?? ""), description: String(obj.creation_request.description ?? ""), reason: String(obj.creation_request.reason ?? "") }
         : null,
       desires: Array.isArray(obj.desires)
-        ? obj.desires.map((d: any) => ({
+        ? obj.desires.slice(0, 2).map((d: any) => ({
             channel: d.channel as ChannelName,
-            delta: Math.max(-0.5, Math.min(0.5, Number(d.delta ?? 0))),
+            delta: Math.max(-1.0, Math.min(1.0, Number(d.delta ?? 0))),
             reason: String(d.reason ?? ""),
           }))
         : [],
       new_goal: obj.new_goal ? String(obj.new_goal) : null,
-      economy_earn: Math.max(0, Math.min(10, Math.floor(Number(obj.economy_earn ?? 0)))),
     }
   } catch {
     return FALLBACK_OUTPUT

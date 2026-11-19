@@ -4,6 +4,7 @@ import { WorldCanvas } from './components/WorldCanvas'
 import { StimulationPanel } from './components/StimulationPanel'
 import { EventLog } from './components/EventLog'
 import { DebugDashboard } from './components/DebugDashboard'
+import { ConversationPanel } from './components/ConversationPanel'
 
 const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`
 
@@ -122,6 +123,7 @@ export default function App() {
       </div>
 
       {/* Main canvas area */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Toolbar */}
         <div style={{
@@ -241,6 +243,9 @@ export default function App() {
             drag to look &nbsp;·&nbsp; W / S move &nbsp;·&nbsp; A / D turn
           </div>
         </div>
+        </div>
+        {/* Conversation panel — right side */}
+        <ConversationPanel />
       </div>
     </div>
   )

@@ -10,6 +10,7 @@ import type { GoalEngine } from "../goals/engine"
 import type { EconomySystem } from "../economy/credits"
 import type { NarratorAgent } from "../cognition/narrator"
 import type { PersonalityEngine } from "../personality/engine"
+import type { ConversationAgent } from "../cognition/conversation"
 import { makeEntity } from "../world/state"
 
 // Try dist (Vite) first, fall back to build (CRA)
@@ -45,6 +46,7 @@ export function makeHttpHandler(
   economy: EconomySystem,
   narrator: NarratorAgent,
   personality: PersonalityEngine,
+  conversation: ConversationAgent,
 ) {
   return async function handleRequest(req: Request): Promise<Response> {
     const url = new URL(req.url)
@@ -116,6 +118,63 @@ export function makeHttpHandler(
       } catch (e) {
         return Response.json({ ok: false, error: String(e) }, { status: 400 })
       }
+    }
+
+    // ── Conversation ────────────────────────────────────────────────
+    if (path === "/api/chat" && req.method === "POST") {
+      try {
+        const body = await req.json() as { visitor_id: string; message: string; display_name?: string }
+        if (!body.visitor_id || !body.message?.trim()) {
+          return Response.json({ ok: false, error: "visitor_id and message required" }, { status: 400 })
+        }
+        const { reply, visitor } = await conversation.chat(body.visitor_id, body.message.trim(), body.display_name)
+        return Response.json({ ok: true, reply, visitor })
+      } catch (e) {
+        return Response.json({ ok: false, error: String(e) }, { status: 500 })
+      }
+    }
+
+    if (path === "/api/chat/history" && req.method === "GET") {
+      const visitorId = url.searchParams.get("visitor_id")
+      if (!visitorId) return Response.json({ ok: false, error: "visitor_id required" }, { status: 400 })
+      const limit = Math.min(100, Math.max(1, parseInt(url.searchParams.get("limit") ?? "50")))
+      const messages = conversation.getHistory(visitorId, limit)
+      const visitor  = conversation.getOrCreateVisitor(visitorId)
+      return Response.json({ ok: true, messages, visitor })
+    }
+
+    if (path === "/api/visitor" && req.method === "POST") {
+      try {
+        const body = await req.json() as { visitor_id: string; display_name?: string }
+        if (!body.visitor_id) return Response.json({ ok: false, error: "visitor_id required" }, { status: 400 })
+        const visitor = conversation.getOrCreateVisitor(body.visitor_id, body.display_name)
+        return Response.json({ ok: true, visitor })
+      } catch (e) {
+        return Response.json({ ok: false, error: String(e) }, { status: 400 })
+      }
+    }
+
+    if (path === "/api/visitor/delete" && req.method === "POST") {
+      try {
+        const body = await req.json() as { visitor_id: string }
+        if (!body.visitor_id) return Response.json({ ok: false, error: "visitor_id required" }, { status: 400 })
+        conversation.deleteVisitorData(body.visitor_id)
+        return Response.json({ ok: true })
+      } catch (e) {
+        return Response.json({ ok: false, error: String(e) }, { status: 400 })
+      }
+    }
+
+    if (path === "/api/status" && req.method === "GET") {
+      return Response.json({
+        ok: true,
+        narrator_enabled: narrator.enabled,
+        narrator_local_available: narrator.localAvailable,
+        conversation_available: conversation.available,
+        world_day: worldEngine.state.environment.dayNumber,
+        world_time: worldEngine.state.environment.timeOfDay.toFixed(1),
+        creature_name: worldEngine.state.creature.name,
+      })
     }
 
     // ── Static files ────────────────────────────────────────────────

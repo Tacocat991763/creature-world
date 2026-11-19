@@ -1,6 +1,7 @@
 import type { WorldEngine } from "../world/engine"
 import type { StimulationNetwork } from "../simulation/network"
 import type { MemoryStore } from "../memory/store"
+import type { ConcernsStore } from "./concerns"
 
 export interface ObservationContext {
   timeOfDay: number
@@ -18,6 +19,7 @@ export interface ObservationContext {
     arousal: number; fatigue: number; threat: number; familiarity: number
   }
   recentMemories: string[]
+  activeConcerns: string[]
 }
 
 const OBSERVATION_RADIUS = 20
@@ -26,6 +28,7 @@ export function buildObservation(
   worldEngine: WorldEngine,
   stimulation: StimulationNetwork,
   memory: MemoryStore,
+  concerns?: ConcernsStore,
 ): ObservationContext {
   const state = worldEngine.state
   const c = state.creature
@@ -65,5 +68,6 @@ export function buildObservation(
       familiarity: parseFloat(outputs.familiarity.toFixed(3)),
     },
     recentMemories: memory.retrieve(5),
+    activeConcerns: concerns?.summaryForLlm(4) ?? [],
   }
 }

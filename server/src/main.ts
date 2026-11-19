@@ -12,7 +12,9 @@ import { PersonalityEngine } from "./personality/engine"
 import { GoalEngine } from "./goals/engine"
 import { EconomySystem } from "./economy/credits"
 import { MemoryStore } from "./memory/store"
+import { ConcernsStore, ConcernMediator } from "./cognition/concerns"
 import { NarratorAgent } from "./cognition/narrator"
+import { ConversationAgent } from "./cognition/conversation"
 import { PlanningAgent } from "./planning/agent"
 import { WsBroadcaster } from "./api/ws"
 import { makeHttpHandler } from "./api/http"
@@ -20,36 +22,39 @@ import type { WsData } from "./api/ws"
 
 const PORT = parseInt(process.env.PORT ?? "8000")
 const DB_PATH = join(import.meta.dir, "../../creature.db")
-const API_KEY = process.env.OPENAI_API_KEY ?? ""
 
-console.log("╔═══════════════════════════════╗")
-console.log("║   Luma — Creature World       ║")
-console.log(`║   Port: ${PORT}                   ║`)
-console.log(`║   DB: ${DB_PATH.slice(-20)}  ║`)
-console.log("╚═══════════════════════════════╝")
+console.log("╔═══════════════════════════════════════╗")
+console.log("║   Luma — Creature World               ║")
+console.log(`║   Port: ${PORT}                           ║`)
+console.log(`║   DB:   ${DB_PATH.slice(-30).padEnd(30)} ║`)
+console.log("╚═══════════════════════════════════════╝")
 
 // ── Database ────────────────────────────────────────────────────────
 const db = new Database(DB_PATH)
 
 // ── Subsystems ──────────────────────────────────────────────────────
 const worldEngine    = new WorldEngine(db)
-const stimulation    = new StimulationNetwork(() => worldEngine.state.environment.timeOfDay)
+const stimulation    = new StimulationNetwork(() => worldEngine.state.environment.timeOfDay, db)
 const movement       = new MovementModel(worldEngine, stimulation, db)
 const personality    = new PersonalityEngine(stimulation, worldEngine, db)
 const goals          = new GoalEngine(db)
 const economy        = new EconomySystem(db)
 const memory         = new MemoryStore(db)
-const narrator       = new NarratorAgent(API_KEY, worldEngine, stimulation, memory, goals, economy, personality, db)
-const planner        = new PlanningAgent(API_KEY, goals, economy, db)
+const concerns       = new ConcernsStore(db)
+const mediator       = new ConcernMediator(concerns, stimulation)
+const narrator       = new NarratorAgent(worldEngine, stimulation, memory, goals, economy, personality, concerns, db)
+const conversation   = new ConversationAgent(db, worldEngine, stimulation, memory, concerns, narrator)
+const planner        = new PlanningAgent(process.env.OPENAI_API_KEY ?? "", goals, economy, db)
 const broadcaster    = new WsBroadcaster(worldEngine, stimulation, movement, narrator)
 
-const handleHttp = makeHttpHandler(worldEngine, stimulation, goals, economy, narrator, personality)
+const handleHttp = makeHttpHandler(worldEngine, stimulation, goals, economy, narrator, personality, conversation)
 
 // ── Start order ─────────────────────────────────────────────────────
 worldEngine.start()
 stimulation.start()
 movement.start()
 personality.start()
+mediator.start()
 broadcaster.start()
 narrator.start()
 planner.start()
@@ -63,7 +68,6 @@ console.log("[Main] All subsystems started")
 const server = Bun.serve<WsData>({
   port: PORT,
   fetch(req, server) {
-    // Upgrade WebSocket connections
     if (req.headers.get("upgrade") === "websocket") {
       const success = server.upgrade(req, { data: { id: crypto.randomUUID() } })
       if (success) return
@@ -89,6 +93,7 @@ function shutdown() {
   narrator.stop()
   planner.stop()
   broadcaster.stop()
+  mediator.stop()
   personality.stop()
   movement.stop()
   stimulation.stop()
