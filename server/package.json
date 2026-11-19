@@ -1,0 +1,14 @@
+{
+  "name": "creature-world-server",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "bun run src/main.ts",
+    "dev": "bun --watch run src/main.ts"
+  },
+  "dependencies": {
+    "@types/bun": "^1.4.4",
+    "bun-types": "^1.4.4",
+    "openai": "^4.52.0"
+  }
+}

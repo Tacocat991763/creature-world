@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "creature-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--host"],
+      "port": 5173,
+      "cwd": "/Users/finncullen/Desktop/main/Projects/creature-world/frontend"
+    }
+  ]
+}

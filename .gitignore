@@ -1,0 +1,19 @@
+# databases
+*.db
+*.db-shm
+*.db-wal
+
+# Node
+node_modules/
+frontend/dist/
+
+# Python build artifacts
+*.egg-info/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# server runtime
+server.log
+server.pid
